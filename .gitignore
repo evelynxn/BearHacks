@@ -27,6 +27,9 @@ output.mp3
 *.wav
 !**/fixtures/*.wav
 
+# Gemma prototype runtime outputs
+gemma/journal_entries.txt
+
 # TypeScript / Next.js
 *.tsbuildinfo
 .next/

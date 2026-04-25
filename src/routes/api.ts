@@ -9,10 +9,7 @@ import {
 } from '../services/gemma.service';
 import {
   SnowflakeServiceError,
-  fetchDailyFragments,
-  fetchHistoricalSummaries,
-  insertDailyJournal,
-  insertMemory
+  snowflakeService
 } from '../services/snowflake.service';
 
 const router = Router();
@@ -52,12 +49,11 @@ router.post('/edge/audio', audioUpload.single('audio'), async (req, res, next) =
     if (!transcript.trim()) return res.status(400).json({ error: 'transcript field required' });
 
     const summary = await summarizeText(transcript);
-    await insertMemory({
-      user_id: userId,
-      source: 'edge_audio',
-      raw_text: transcript,
-      context_json: summary as unknown as Record<string, unknown>
-    });
+    await snowflakeService.insertRawEvent(
+      userId,
+      'edge_audio',
+      JSON.stringify({ transcript, summary })
+    );
     res.status(202).json({ ok: true, summary });
   } catch (err) {
     next(err);
@@ -69,11 +65,11 @@ router.post('/client/image', imageUpload.single('image'), async (req, res, next)
     if (!req.file) return res.status(400).json({ error: 'image file required' });
     const userId = getUserId(req);
     const context = await describeImage(req.file.buffer, req.file.mimetype);
-    await insertMemory({
-      user_id: userId,
-      source: 'client_image',
-      context_json: context as unknown as Record<string, unknown>
-    });
+    await snowflakeService.insertRawEvent(
+      userId,
+      'client_image',
+      JSON.stringify(context)
+    );
     res.status(202).json({ ok: true, context });
   } catch (err) {
     next(err);
@@ -88,13 +84,22 @@ router.post('/orchestrate/summary', async (req, res, next) => {
         ? req.body.date
         : new Date().toISOString().slice(0, 10);
 
-    const fragments = await fetchDailyFragments(userId, isoDate);
-    if (fragments.length === 0) {
-      return res.status(404).json({ error: 'no fragments for date' });
+    const events = await snowflakeService.getDailyRawEvents(userId, isoDate);
+    if (events.length === 0) {
+      return res.status(404).json({ error: 'no events for date' });
     }
-    const narrative = await synthesizeNarrative(fragments.map(f => f.CONTEXT_JSON));
+
+    const fragments = events.map((e) => {
+      try {
+        return JSON.parse(e.CONTENT);
+      } catch {
+        return { event_type: e.EVENT_TYPE, raw: e.CONTENT };
+      }
+    });
+    const narrative = await synthesizeNarrative(fragments);
     const audio = await synthesizeSpeech(narrative);
-    await insertDailyJournal({ user_id: userId, journal_date: isoDate, narrative });
+    // TODO: upload audio to Vultr Object Storage and persist the public URL here.
+    await snowflakeService.insertDailyJournal(userId, isoDate, narrative, '');
 
     res.set('Content-Type', 'audio/mpeg');
     res.set('X-Punchi-Narrative', encodeURIComponent(narrative));
@@ -107,9 +112,19 @@ router.post('/orchestrate/summary', async (req, res, next) => {
 router.get('/feed', async (req, res, next) => {
   try {
     const userId = getUserId(req);
-    const daysParam = Number(req.query.days ?? 30);
-    const rows = await fetchHistoricalSummaries(userId, daysParam);
+    const limitParam = Number(req.query.limit ?? 7);
+    const rows = await snowflakeService.getRecentJournals(userId, limitParam);
     res.json({ entries: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/feed/weekly', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const summary = await snowflakeService.summarizeWeek(userId);
+    res.json({ summary });
   } catch (err) {
     next(err);
   }
