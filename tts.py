@@ -7,10 +7,9 @@ with open ("test.json", "r") as file:
 
 script = data["script"]
 
-# client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
+client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
 
-client = ElevenLabs(api_key="74dcac49a1994cd1bbe1a85e29f8634521fde624eb558d87d370e7cb21741462")
-
+# client = ElevenLabs(api_key="74dcac49a1994cd1bbe1a85e29f8634521fde624eb558d87d370e7cb21741462")
 
 audio = client.text_to_speech.convert(
     text=script,
