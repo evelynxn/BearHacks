@@ -1,0 +1,42 @@
+# Node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+.pnpm-debug.log*
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Audio / media artifacts
+output.mp3
+*.wav
+!**/fixtures/*.wav
+
+# TypeScript / Next.js
+*.tsbuildinfo
+.next/
+out/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code per-developer settings
+.claude/settings.local.json
