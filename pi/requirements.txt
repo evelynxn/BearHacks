@@ -1,0 +1,15 @@
+# Punchi — Edge Agent dependencies (Raspberry Pi Zero 2 W)
+
+pvporcupine>=3.0.0
+pyaudio>=0.2.14
+requests>=2.31.0
+websocket-client>=1.7.0
+python-dotenv>=1.0.0
+
+# APA102 LED driver for the ReSpeaker 2-Mics HAT.
+# If pip can't find a wheel for your Pi, see:
+#   https://github.com/respeaker/seeed-voicecard
+apa102-pi>=2.5.0
+
+# System packages — install with apt (NOT pip), see README.md:
+#   sudo apt install -y portaudio19-dev mpg123 libatlas-base-dev
