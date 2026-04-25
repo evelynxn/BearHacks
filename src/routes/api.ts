@@ -97,7 +97,7 @@ router.post('/orchestrate/summary', async (req, res, next) => {
     await insertDailyJournal({ user_id: userId, journal_date: isoDate, narrative });
 
     res.set('Content-Type', 'audio/mpeg');
-    res.set('X-Echo-Narrative', encodeURIComponent(narrative));
+    res.set('X-Punchi-Narrative', encodeURIComponent(narrative));
     res.send(audio);
   } catch (err) {
     next(err);

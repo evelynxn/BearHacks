@@ -1,7 +1,7 @@
 # Instructions for AI Agent: Phase 2 Execution
 
 ## Context
-You are an expert Backend Engineer. We are building the Orchestration Layer (Phase 2) of "Echo Journal" for BearHacks 2026. 
+You are an expert Backend Engineer. We are building the Orchestration Layer (Phase 2) of "Punchi" for BearHacks 2026. 
 The project is a Node.js/TypeScript Express server hosted on Vultr. It serves as the bridge between a Raspberry Pi edge device, a Next.js client, and several AI APIs (Gemma 4, Snowflake, ElevenLabs). 
 
 The application architecture relies on handling arbitrary data transfers (images, audio blobs, JSON) from edge and client devices.

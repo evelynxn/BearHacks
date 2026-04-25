@@ -6,7 +6,7 @@ export default async function Home() {
   if (!session) {
     return (
       <main style={{ padding: "3rem", fontFamily: "system-ui, sans-serif" }}>
-        <h1>Echo Journal</h1>
+        <h1>Punchi</h1>
         <p>Pair your device, capture moments, listen back nightly.</p>
         <p>
           <a href="/auth/login?screen_hint=signup">Sign up</a>
