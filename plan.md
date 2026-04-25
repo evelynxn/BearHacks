@@ -1,9 +1,9 @@
-# Echo Journal - Implementation Plan
+# Punchi - Implementation Plan
 
 ## Phase 1: Edge Layer (Hardware & Python)
 **Goal:** Establish the physical interface and "Alexa-like" behavior.
 - **Hardware Assembly:** Connect ReSpeaker 2-Mics HAT and 0.96" I2C OLED to the Raspberry Pi Zero 2 W.
-- **Wakeword Engine:** Implement Picovoice Porcupine for local "Hey Echo" detection without cloud latency.
+- **Wakeword Engine:** Implement Picovoice Porcupine for local "Hey Punchi" detection without cloud latency.
 - **Audio I/O:** Setup ALSA. Record `.wav` files when wakeword triggers; play synthesized `.mp3` files via the I2S DAC.
 - **Network:** Implement a WebSocket client for real-time LED status updates and a REST client for POSTing audio payloads to the backend.
 

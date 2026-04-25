@@ -1,7 +1,7 @@
-# Echo Journal - Architecture & Tech Stack
+# Punchi - Architecture & Tech Stack
 
 ## 1. System Design
-Echo Journal operates on a Producer-Consumer architecture. The Raspberry Pi (Edge) and the Next.js Web App (Client) act as producers of raw life data. The Node.js backend hosted on Vultr acts as the Orchestrator, consuming this data and processing it through third-party AI APIs.
+Punchi operates on a Producer-Consumer architecture. The Raspberry Pi (Edge) and the Next.js Web App (Client) act as producers of raw life data. The Node.js backend hosted on Vultr acts as the Orchestrator, consuming this data and processing it through third-party AI APIs.
 
 ## 2. Tech Stack Overview
 - **Edge:** Raspberry Pi Zero 2 W, ReSpeaker 2-Mics Pi HAT, Python 3.
@@ -18,7 +18,7 @@ Echo Journal operates on a Producer-Consumer architecture. The Raspberry Pi (Edg
 - **Web App <-> Backend:** GraphQL for complex feed queries; REST for arbitrary image/file uploads.
 - **Backend <-> APIs:** REST over HTTPS.
 
-## 4. Data Flow (The "Echo" Cycle)
+## 4. Data Flow (The "Punchi" Cycle)
 1. **Capture:** A photo is uploaded via the Next.js app, or audio is spoken to the Raspberry Pi.
 2. **Ingest:** The Node.js API catches the file via `multer` and temporarily holds it, or stores it in Vultr Object Storage.
 3. **Process:** Gemma 4 Vision extracts metadata/context from the photo. An STT service extracts text from the audio. The resulting JSON is saved to Snowflake's `raw_events` table.

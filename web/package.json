@@ -1,8 +1,8 @@
 {
-  "name": "echo-journal-web",
+  "name": "punchi-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Echo Journal Phase 4 client — Next.js dashboard + Auth0 device pairing.",
+  "description": "Punchi Phase 4 client — Next.js dashboard + Auth0 device pairing.",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",

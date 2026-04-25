@@ -13,7 +13,7 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/api', apiRouter);
 
 app.listen(port, () => {
-  console.log(`Echo Journal orchestrator listening on :${port}`);
+  console.log(`Punchi orchestrator listening on :${port}`);
 });
 
 process.on('unhandledRejection', reason => {

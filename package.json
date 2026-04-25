@@ -1,8 +1,8 @@
 {
-  "name": "echo-journal-orchestrator",
+  "name": "punchi-orchestrator",
   "version": "0.1.0",
   "private": true,
-  "description": "Echo Journal Phase 2 orchestrator — routes edge/client payloads through Gemma, Snowflake, and ElevenLabs.",
+  "description": "Punchi Phase 2 orchestrator — routes edge/client payloads through Gemma, Snowflake, and ElevenLabs.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
