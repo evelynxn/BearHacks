@@ -1,0 +1,21 @@
+/* TODO(phase4): replace these placeholder styles with the real Echo Journal design system. */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #fafafa;
+  color: #111;
+}
+
+a {
+  color: #0070f3;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
