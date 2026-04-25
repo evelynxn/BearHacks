@@ -1,9 +1,14 @@
 # this calls functions that take in voice input and then called a function which summarized the voice input along with an image
 
+import os
+from dotenv import load_dotenv
 from voice_input import record_and_transcribe
 import ollama
 
-image_path = "flowers.jpeg"
+load_dotenv()
+
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e4b")
+image_path = os.environ.get("JOURNAL_IMAGE_PATH", "flowers.jpeg")
 
 #record voice and get transcript
 day_summary = record_and_transcribe(duration=5)
@@ -12,7 +17,7 @@ day_summary = record_and_transcribe(duration=5)
 print("\nGenerating journal entry...\n")
 
 response = ollama.chat(
-    model="gemma4:e4b",
+    model=OLLAMA_MODEL,
     messages=[
         {
             "role": "system",

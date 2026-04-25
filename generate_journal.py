@@ -1,8 +1,14 @@
+import os
+from dotenv import load_dotenv
 import ollama
+
+load_dotenv()
+
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e4b")
 
 def generate_entry(day_summary, image_path):
     response = ollama.chat(
-        model="gemma4:e4b",
+        model=OLLAMA_MODEL,
         messages=[
             {
                 "role": "system",
