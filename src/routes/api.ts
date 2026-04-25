@@ -10,9 +10,13 @@ import {
 import {
   SnowflakeServiceError,
   fetchDailyFragments,
+  fetchDraftJournal,
   fetchHistoricalSummaries,
   insertDailyJournal,
-  insertMemory
+  insertMemory,
+  publishJournal,
+  updateJournalNarrative,
+  upsertDraftJournal
 } from '../services/snowflake.service';
 
 const router = Router();
@@ -43,6 +47,24 @@ function getUserId(req: Request): string {
   if (!headerValue) throw new UnauthenticatedError();
   return headerValue;
 }
+
+// Debug endpoint — writes pre-processed data to Snowflake without calling Gemma.
+router.post('/debug/ingest', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const { transcript, summary } = req.body;
+    if (!transcript || !summary) return res.status(400).json({ error: 'transcript and summary required' });
+    await insertMemory({
+      user_id: userId,
+      source: 'edge_audio',
+      raw_text: transcript,
+      context_json: summary
+    });
+    res.status(202).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.post('/edge/audio', audioUpload.single('audio'), async (req, res, next) => {
   try {
@@ -80,6 +102,58 @@ router.post('/client/image', imageUpload.single('image'), async (req, res, next)
   }
 });
 
+// Preview: synthesize narrative from today's fragments, store as IS_READY=FALSE draft, return audio.
+router.post('/orchestrate/preview', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate =
+      typeof req.body?.date === 'string' && req.body.date.length === 10
+        ? req.body.date
+        : new Date().toISOString().slice(0, 10);
+
+    const fragments = await fetchDailyFragments(userId, isoDate);
+    if (fragments.length === 0) {
+      return res.status(404).json({ error: 'no fragments for date' });
+    }
+    const narrative = await synthesizeNarrative(fragments.map(f => {
+      try { return JSON.parse(f.CONTENT); } catch { return { content: f.CONTENT }; }
+    }));
+    const audio = await synthesizeSpeech(narrative);
+    await upsertDraftJournal(userId, isoDate, narrative);
+
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('X-Punchi-Narrative', encodeURIComponent(narrative));
+    res.send(audio);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Publish: flip IS_READY=TRUE for a draft journal, return confirmation audio.
+router.post('/orchestrate/publish', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate =
+      typeof req.body?.date === 'string' && req.body.date.length === 10
+        ? req.body.date
+        : new Date().toISOString().slice(0, 10);
+
+    const ok = await publishJournal(userId, isoDate);
+    if (!ok) {
+      return res.status(404).json({ error: 'no draft journal found for date' });
+    }
+    const confirmText =
+      `Your journal for ${isoDate} has been saved. It's now saved to your dashboard.`;
+    const audio = await synthesizeSpeech(confirmText);
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('X-Punchi-Narrative', encodeURIComponent(confirmText));
+    res.send(audio);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Legacy keep for backwards-compat — behaves like preview (draft only, no auto-publish).
 router.post('/orchestrate/summary', async (req, res, next) => {
   try {
     const userId = getUserId(req);
@@ -92,13 +166,67 @@ router.post('/orchestrate/summary', async (req, res, next) => {
     if (fragments.length === 0) {
       return res.status(404).json({ error: 'no fragments for date' });
     }
-    const narrative = await synthesizeNarrative(fragments.map(f => f.CONTEXT_JSON));
+    const narrative = await synthesizeNarrative(fragments.map(f => {
+      try { return JSON.parse(f.CONTENT); } catch { return { content: f.CONTENT }; }
+    }));
     const audio = await synthesizeSpeech(narrative);
-    await insertDailyJournal({ user_id: userId, journal_date: isoDate, narrative });
+    await upsertDraftJournal(userId, isoDate, narrative);
 
     res.set('Content-Type', 'audio/mpeg');
     res.set('X-Punchi-Narrative', encodeURIComponent(narrative));
     res.send(audio);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// TTS helper — converts arbitrary text to ElevenLabs MP3 (used by Pi for short responses).
+router.post('/orchestrate/tts', async (req, res, next) => {
+  try {
+    getUserId(req);
+    const { text } = req.body;
+    if (typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ error: 'text string required' });
+    }
+    const audio = await synthesizeSpeech(text.slice(0, 500));
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(audio);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Edit narrative text (web app or Pi can call this before publishing).
+router.patch('/journal/:date', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    const { narrative } = req.body;
+    if (typeof narrative !== 'string' || !narrative.trim()) {
+      return res.status(400).json({ error: 'narrative string required' });
+    }
+    const ok = await updateJournalNarrative(userId, isoDate, narrative);
+    if (!ok) return res.status(404).json({ error: 'journal not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get the current draft for a date (so web app can display it for editing).
+router.get('/journal/:date/draft', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    const draft = await fetchDraftJournal(userId, isoDate);
+    if (!draft) return res.status(404).json({ error: 'no draft for date' });
+    res.json(draft);
   } catch (err) {
     next(err);
   }

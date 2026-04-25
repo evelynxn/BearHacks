@@ -34,14 +34,13 @@ export interface DailyJournalRow {
 
 export interface HistoricalSummary {
   JOURNAL_DATE: string;
-  SUMMARY: string;
+  NARRATIVE_TEXT: string;
+  IS_READY: boolean;
 }
 
 export interface RawEventRow {
   USER_ID: string;
-  SOURCE: MemorySource;
-  RAW_TEXT: string | null;
-  MEDIA_URL: string | null;
-  CONTEXT_JSON: Record<string, unknown>;
+  EVENT_TYPE: string;
+  CONTENT: string;
   CREATED_AT: string;
 }
