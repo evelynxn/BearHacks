@@ -3,18 +3,25 @@ import multer, { MulterError } from 'multer';
 import { AudioServiceError, synthesizeSpeech } from '../services/audio.service';
 import {
   GemmaServiceError,
+  classifyCommand,
   describeImage,
   summarizeText,
   synthesizeNarrative
 } from '../services/gemma.service';
 import {
   SnowflakeServiceError,
+  clearDailyFragments,
+  deleteFragment,
+  deleteFragmentsByCount,
+  deleteFragmentsByMatch,
+  deleteLatestFragment,
   fetchDailyFragments,
   fetchDraftJournal,
   fetchHistoricalSummaries,
   insertDailyJournal,
   insertMemory,
   publishJournal,
+  updateFragmentContent,
   updateJournalNarrative,
   upsertDraftJournal
 } from '../services/snowflake.service';
@@ -102,7 +109,7 @@ router.post('/client/image', imageUpload.single('image'), async (req, res, next)
   }
 });
 
-// Preview: synthesize narrative from today's fragments, store as IS_READY=FALSE draft, return audio.
+// Preview: synthesize narrative from today's fragments and return audio. Does NOT write to DB.
 router.post('/orchestrate/preview', async (req, res, next) => {
   try {
     const userId = getUserId(req);
@@ -119,7 +126,6 @@ router.post('/orchestrate/preview', async (req, res, next) => {
       try { return JSON.parse(f.CONTENT); } catch { return { content: f.CONTENT }; }
     }));
     const audio = await synthesizeSpeech(narrative);
-    await upsertDraftJournal(userId, isoDate, narrative);
 
     res.set('Content-Type', 'audio/mpeg');
     res.set('X-Punchi-Narrative', encodeURIComponent(narrative));
@@ -129,7 +135,7 @@ router.post('/orchestrate/preview', async (req, res, next) => {
   }
 });
 
-// Publish: flip IS_READY=TRUE for a draft journal, return confirmation audio.
+// Publish: re-synthesize narrative, write to DAILY_JOURNALS as IS_READY=TRUE, return confirmation audio.
 router.post('/orchestrate/publish', async (req, res, next) => {
   try {
     const userId = getUserId(req);
@@ -138,12 +144,17 @@ router.post('/orchestrate/publish', async (req, res, next) => {
         ? req.body.date
         : new Date().toISOString().slice(0, 10);
 
-    const ok = await publishJournal(userId, isoDate);
-    if (!ok) {
-      return res.status(404).json({ error: 'no draft journal found for date' });
+    const fragments = await fetchDailyFragments(userId, isoDate);
+    if (fragments.length === 0) {
+      return res.status(404).json({ error: 'no fragments for date' });
     }
-    const confirmText =
-      `Your journal for ${isoDate} has been saved. It's now saved to your dashboard.`;
+    const narrative = await synthesizeNarrative(fragments.map(f => {
+      try { return JSON.parse(f.CONTENT); } catch { return { content: f.CONTENT }; }
+    }));
+    await upsertDraftJournal(userId, isoDate, narrative);
+    await publishJournal(userId, isoDate);
+
+    const confirmText = `Your journal for ${isoDate} has been saved. It's now ready on your dashboard.`;
     const audio = await synthesizeSpeech(confirmText);
     res.set('Content-Type', 'audio/mpeg');
     res.set('X-Punchi-Narrative', encodeURIComponent(confirmText));
@@ -227,6 +238,156 @@ router.get('/journal/:date/draft', async (req, res, next) => {
     const draft = await fetchDraftJournal(userId, isoDate);
     if (!draft) return res.status(404).json({ error: 'no draft for date' });
     res.json(draft);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Gemma-powered command classification — atomic intent detection.
+// Returns ElevenLabs audio of Stampy's verbal response + intent header.
+router.post('/orchestrate/command', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const transcript: string = req.body?.transcript ?? '';
+    const context: string[] = Array.isArray(req.body?.context) ? req.body.context : [];
+    const isoDate =
+      typeof req.body?.date === 'string' && req.body.date.length === 10
+        ? req.body.date
+        : new Date().toISOString().slice(0, 10);
+
+    if (!transcript.trim()) return res.status(400).json({ error: 'transcript required' });
+
+    const { intent, content, response, needs_confirmation } = await classifyCommand(transcript, context);
+
+    // Execute intent immediately UNLESS it needs confirmation (destructive actions)
+    if (!needs_confirmation) {
+      switch (intent) {
+        case 'journal_entry':
+          if (content.trim()) {
+            const summary = await summarizeText(content);
+            await insertMemory({ user_id: userId, source: 'edge_audio', raw_text: content, context_json: summary as unknown as Record<string, unknown> });
+          }
+          break;
+        // read_journal, delete_latest (needs confirm), clear_all (needs confirm), delete_count (needs confirm), delete_match (needs confirm), unknown: no DB action
+      }
+    }
+
+    const audio = await synthesizeSpeech(response || 'Got it.');
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('X-Punchi-Intent', intent);
+    res.set('X-Punchi-Needs-Confirm', needs_confirmation ? 'true' : 'false');
+    res.set('X-Punchi-Content', encodeURIComponent(content));
+    res.send(audio);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete latest fragment for a date.
+router.delete('/fragments/:date/latest', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const ok = await deleteLatestFragment(userId, isoDate);
+    if (!ok) return res.status(404).json({ error: 'no fragments for date' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// List all fragments for a date (web app fragment manager).
+router.get('/fragments/:date', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    const fragments = await fetchDailyFragments(userId, isoDate);
+    res.json({ fragments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Clear all fragments for today (voice command: "stampi clear my journal").
+router.delete('/fragments/:date', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    const count = await clearDailyFragments(userId, isoDate);
+    res.json({ ok: true, deleted: count });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete a single fragment.
+router.delete('/fragments/:date/:id', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const ok = await deleteFragment(userId, req.params.id);
+    if (!ok) return res.status(404).json({ error: 'fragment not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete N most recent fragments (called after confirmation).
+router.post('/fragments/:date/delete-count', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    const { count } = req.body;
+    if (typeof count !== 'number' || count < 1) {
+      return res.status(400).json({ error: 'count must be a positive number' });
+    }
+    const deleted = await deleteFragmentsByCount(userId, isoDate, count);
+    res.json({ ok: true, deleted });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete fragments matching description (called after confirmation).
+router.post('/fragments/:date/delete-match', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const isoDate = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    const { query } = req.body;
+    if (typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({ error: 'query string required' });
+    }
+    const deleted = await deleteFragmentsByMatch(userId, isoDate, query);
+    res.json({ ok: true, deleted });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Edit a single fragment's text.
+router.patch('/fragments/:date/:id', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const { text } = req.body;
+    if (typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ error: 'text string required' });
+    }
+    const ok = await updateFragmentContent(userId, req.params.id, text);
+    if (!ok) return res.status(404).json({ error: 'fragment not found' });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
