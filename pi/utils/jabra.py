@@ -214,16 +214,35 @@ def record_vad(pa: pyaudio.PyAudio, device_index: int) -> bytes:
 # Playback
 # ---------------------------------------------------------------------------
 
+_mpg123_proc: Optional[subprocess.Popen] = None
+
+
+def stop_playback() -> None:
+    """Stop any currently playing audio immediately."""
+    global _mpg123_proc
+    if sys.platform == "win32":
+        try:
+            import pygame
+            if pygame.mixer.get_init():
+                pygame.mixer.music.stop()
+        except Exception:
+            pass
+    else:
+        if _mpg123_proc and _mpg123_proc.poll() is None:
+            _mpg123_proc.terminate()
+            _mpg123_proc = None
+
+
 def play_mp3_bytes(mp3_bytes: bytes, alsa_hw: str) -> None:
     """
     Play MP3 bytes through the Jabra speaker.
     Uses pygame on Windows/dev, mpg123 on Linux/Pi.
     """
+    global _mpg123_proc
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         tmp.write(mp3_bytes)
         tmp_path = tmp.name
     try:
-        import sys
         if sys.platform == "win32":
             import pygame
             pygame.mixer.init()
@@ -231,12 +250,12 @@ def play_mp3_bytes(mp3_bytes: bytes, alsa_hw: str) -> None:
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy():
                 pygame.time.wait(100)
-            pygame.mixer.quit()
         else:
-            subprocess.run(
+            _mpg123_proc = subprocess.Popen(
                 ["mpg123", "-q", "-a", alsa_hw, tmp_path],
-                check=True,
             )
+            _mpg123_proc.wait()
+            _mpg123_proc = None
     except ImportError:
         print("[jabra] pygame not installed — run: pip install pygame")
     except FileNotFoundError:

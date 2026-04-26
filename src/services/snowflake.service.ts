@@ -134,6 +134,82 @@ export async function fetchDraftJournal(userId: string, isoDate: string): Promis
   return rows.length > 0 ? { narrative: rows[0].NARRATIVE_TEXT } : null;
 }
 
+export async function deleteLatestFragment(userId: string, isoDate: string): Promise<boolean> {
+  const rows = await execute<{ ID: string }>(
+    `SELECT ID FROM RAW_EVENTS WHERE USER_ID = ? AND DATE(CREATED_AT) = ? ORDER BY CREATED_AT DESC LIMIT 1`,
+    [userId, isoDate]
+  );
+  if (rows.length === 0) return false;
+  await execute(`DELETE FROM RAW_EVENTS WHERE ID = ?`, [rows[0].ID]);
+  return true;
+}
+
+export async function deleteFragmentsByCount(userId: string, isoDate: string, count: number): Promise<number> {
+  const safeCount = Math.max(1, Math.floor(count));
+  const rows = await execute<{ ID: string }>(
+    `SELECT ID FROM RAW_EVENTS WHERE USER_ID = ? AND DATE(CREATED_AT) = ? ORDER BY CREATED_AT DESC LIMIT ?`,
+    [userId, isoDate, safeCount]
+  );
+  if (rows.length === 0) return 0;
+  const ids = rows.map(r => r.ID);
+  await execute(
+    `DELETE FROM RAW_EVENTS WHERE ID IN (${ids.map(() => '?').join(',')})`,
+    ids
+  );
+  return ids.length;
+}
+
+export async function deleteFragmentsByMatch(userId: string, isoDate: string, query: string): Promise<number> {
+  // Case-insensitive substring match on CONTENT
+  const rows = await execute<{ ID: string }>(
+    `SELECT ID FROM RAW_EVENTS WHERE USER_ID = ? AND DATE(CREATED_AT) = ? AND LOWER(CONTENT) LIKE LOWER(?)`,
+    [userId, isoDate, `%${query}%`]
+  );
+  if (rows.length === 0) return 0;
+  const ids = rows.map(r => r.ID);
+  await execute(
+    `DELETE FROM RAW_EVENTS WHERE ID IN (${ids.map(() => '?').join(',')})`,
+    ids
+  );
+  return ids.length;
+}
+
+export async function clearDailyFragments(userId: string, isoDate: string): Promise<number> {
+  const rows = await execute<{ CNT: number }>(
+    `SELECT COUNT(*) AS CNT FROM RAW_EVENTS WHERE USER_ID = ? AND DATE(CREATED_AT) = ?`,
+    [userId, isoDate]
+  );
+  const count = rows[0]?.CNT ?? 0;
+  await execute(
+    `DELETE FROM RAW_EVENTS WHERE USER_ID = ? AND DATE(CREATED_AT) = ?`,
+    [userId, isoDate]
+  );
+  return count;
+}
+
+export async function deleteFragment(userId: string, fragmentId: string): Promise<boolean> {
+  const rows = await execute<{ CNT: number }>(
+    `SELECT COUNT(*) AS CNT FROM RAW_EVENTS WHERE USER_ID = ? AND ID = ?`,
+    [userId, fragmentId]
+  );
+  if ((rows[0]?.CNT ?? 0) === 0) return false;
+  await execute(`DELETE FROM RAW_EVENTS WHERE USER_ID = ? AND ID = ?`, [userId, fragmentId]);
+  return true;
+}
+
+export async function updateFragmentContent(userId: string, fragmentId: string, rawText: string): Promise<boolean> {
+  const rows = await execute<{ CNT: number }>(
+    `SELECT COUNT(*) AS CNT FROM RAW_EVENTS WHERE USER_ID = ? AND ID = ?`,
+    [userId, fragmentId]
+  );
+  if ((rows[0]?.CNT ?? 0) === 0) return false;
+  await execute(
+    `UPDATE RAW_EVENTS SET CONTENT = ? WHERE USER_ID = ? AND ID = ?`,
+    [JSON.stringify({ raw_text: rawText }), userId, fragmentId]
+  );
+  return true;
+}
+
 export async function fetchDailyFragments(userId: string, isoDate: string): Promise<RawEventRow[]> {
   const sql = `
     SELECT USER_ID, EVENT_TYPE, CONTENT, CREATED_AT
