@@ -1,0 +1,18 @@
+[
+  {
+    "id": "stamp-1777211066652",
+    "path": "/stamps/stamp-1777211064266.png",
+    "title": "me!",
+    "owner": "demo-user",
+    "color": "soft",
+    "createdAt": "2026-04-26T13:44:26.652Z"
+  },
+  {
+    "id": "stamp-1777197578709",
+    "path": "/stamps/stamp-1777197574744.gif",
+    "title": "New stamp",
+    "owner": "demo-user",
+    "color": "olive",
+    "createdAt": "2026-04-26T09:59:38.709Z"
+  }
+]

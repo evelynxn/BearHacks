@@ -1,9 +1,9 @@
 "use client";
 
-import type { JournalEntry } from "../lib/mock-data";
+import type { FeedEntry } from "../lib/mock-data";
 
 type Props = {
-  entry: JournalEntry;
+  entry: FeedEntry;
   offset?: number; // visual stack offset (back cards)
   onClick?: () => void;
 };

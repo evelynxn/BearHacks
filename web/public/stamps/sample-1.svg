@@ -1,0 +1,13 @@
+<svg viewBox="0 0 200 236" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="s1">
+      <rect width="200" height="236" fill="white"/>
+      <circle cx="0" cy="0" r="9" fill="black"/><circle cx="20" cy="0" r="9" fill="black"/><circle cx="40" cy="0" r="9" fill="black"/><circle cx="60" cy="0" r="9" fill="black"/><circle cx="80" cy="0" r="9" fill="black"/><circle cx="100" cy="0" r="9" fill="black"/><circle cx="120" cy="0" r="9" fill="black"/><circle cx="140" cy="0" r="9" fill="black"/><circle cx="160" cy="0" r="9" fill="black"/><circle cx="180" cy="0" r="9" fill="black"/><circle cx="200" cy="0" r="9" fill="black"/>
+      <circle cx="0" cy="236" r="9" fill="black"/><circle cx="20" cy="236" r="9" fill="black"/><circle cx="40" cy="236" r="9" fill="black"/><circle cx="60" cy="236" r="9" fill="black"/><circle cx="80" cy="236" r="9" fill="black"/><circle cx="100" cy="236" r="9" fill="black"/><circle cx="120" cy="236" r="9" fill="black"/><circle cx="140" cy="236" r="9" fill="black"/><circle cx="160" cy="236" r="9" fill="black"/><circle cx="180" cy="236" r="9" fill="black"/><circle cx="200" cy="236" r="9" fill="black"/>
+      <circle cx="0" cy="0" r="9" fill="black"/><circle cx="0" cy="20" r="9" fill="black"/><circle cx="0" cy="40" r="9" fill="black"/><circle cx="0" cy="60" r="9" fill="black"/><circle cx="0" cy="80" r="9" fill="black"/><circle cx="0" cy="100" r="9" fill="black"/><circle cx="0" cy="120" r="9" fill="black"/><circle cx="0" cy="140" r="9" fill="black"/><circle cx="0" cy="160" r="9" fill="black"/><circle cx="0" cy="180" r="9" fill="black"/><circle cx="0" cy="200" r="9" fill="black"/><circle cx="0" cy="220" r="9" fill="black"/><circle cx="0" cy="236" r="9" fill="black"/>
+      <circle cx="200" cy="0" r="9" fill="black"/><circle cx="200" cy="20" r="9" fill="black"/><circle cx="200" cy="40" r="9" fill="black"/><circle cx="200" cy="60" r="9" fill="black"/><circle cx="200" cy="80" r="9" fill="black"/><circle cx="200" cy="100" r="9" fill="black"/><circle cx="200" cy="120" r="9" fill="black"/><circle cx="200" cy="140" r="9" fill="black"/><circle cx="200" cy="160" r="9" fill="black"/><circle cx="200" cy="180" r="9" fill="black"/><circle cx="200" cy="200" r="9" fill="black"/><circle cx="200" cy="220" r="9" fill="black"/><circle cx="200" cy="236" r="9" fill="black"/>
+    </mask>
+  </defs>
+  <rect x="6" y="6" width="188" height="224" rx="4" fill="#c9899b" mask="url(#s1)"/>
+  <text x="100" y="130" text-anchor="middle" font-size="48" fill="#f2e8d8" font-family="ui-rounded, system-ui">🌸</text>
+</svg>

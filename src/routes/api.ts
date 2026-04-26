@@ -15,12 +15,20 @@ import {
   deleteFragmentsByCount,
   deleteFragmentsByMatch,
   deleteLatestFragment,
+  deleteStamp,
   fetchDailyFragments,
   fetchDraftJournal,
   fetchHistoricalSummaries,
+  fetchProfileSlots,
+  fetchUserLikes,
+  fetchUserStamps,
   insertDailyJournal,
+  insertLike,
   insertMemory,
+  insertStamp,
   publishJournal,
+  removeLike,
+  setProfileSlot,
   updateFragmentContent,
   updateJournalNarrative,
   upsertDraftJournal
@@ -262,12 +270,15 @@ router.post('/orchestrate/command', async (req, res, next) => {
     // Execute intent immediately UNLESS it needs confirmation (destructive actions)
     if (!needs_confirmation) {
       switch (intent) {
-        case 'journal_entry':
-          if (content.trim()) {
-            const summary = await summarizeText(content);
-            await insertMemory({ user_id: userId, source: 'edge_audio', raw_text: content, context_json: summary as unknown as Record<string, unknown> });
+        case 'journal_entry': {
+          // Use classified content if available, otherwise fall back to original transcript
+          const journalText = content.trim() || transcript.trim();
+          if (journalText) {
+            const summary = await summarizeText(journalText);
+            await insertMemory({ user_id: userId, source: 'edge_audio', raw_text: journalText, context_json: summary as unknown as Record<string, unknown> });
           }
           break;
+        }
         // read_journal, delete_latest (needs confirm), clear_all (needs confirm), delete_count (needs confirm), delete_match (needs confirm), unknown: no DB action
       }
     }
@@ -392,6 +403,118 @@ router.patch('/fragments/:date/:id', async (req, res, next) => {
     next(err);
   }
 });
+
+// ── Stamps ────────────────────────────────────────────────────────────
+
+// Save a new stamp (image upload + cutout). Returns the stamp record.
+router.post('/stamps', imageUpload.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'image file required' });
+    const userId = getUserId(req);
+    // Use Gemma to generate a summary/label of the image contents
+    let label = 'Untitled';
+    try {
+      const context = await describeImage(req.file.buffer, req.file.mimetype);
+      label = context.caption || 'Untitled';
+    } catch {
+      // Gemma unavailable — fall back to user-provided label or 'Untitled'
+      label = typeof req.body?.label === 'string' ? req.body.label : 'Untitled';
+    }
+    // Store image as base64 data URI for simplicity (production: upload to S3/GCS)
+    const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    await insertStamp(userId, dataUri, label);
+    res.status(201).json({ ok: true, image_url: dataUri, label });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// List user's stamps.
+router.get('/stamps', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const stamps = await fetchUserStamps(userId);
+    res.json({ stamps });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete a stamp.
+router.delete('/stamps/:id', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const ok = await deleteStamp(userId, req.params.id);
+    if (!ok) return res.status(404).json({ error: 'stamp not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Likes ─────────────────────────────────────────────────────────────
+
+router.post('/likes', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const { target_user_id, target_date } = req.body;
+    if (!target_user_id || !target_date) return res.status(400).json({ error: 'target_user_id and target_date required' });
+    await insertLike(userId, target_user_id, target_date);
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/likes', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const { target_user_id, target_date } = req.body;
+    if (!target_user_id || !target_date) return res.status(400).json({ error: 'target_user_id and target_date required' });
+    await removeLike(userId, target_user_id, target_date);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/likes', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const likes = await fetchUserLikes(userId);
+    res.json({ likes });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Profile slots ─────────────────────────────────────────────────────
+
+router.get('/profile/slots', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const slots = await fetchProfileSlots(userId);
+    res.json({ slots });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/profile/slots/:index', async (req, res, next) => {
+  try {
+    const userId = getUserId(req);
+    const slotIndex = parseInt(req.params.index, 10);
+    if (isNaN(slotIndex) || slotIndex < 0 || slotIndex > 6) return res.status(400).json({ error: 'slot index must be 0-6' });
+    const { stamp_id } = req.body;
+    if (!stamp_id) return res.status(400).json({ error: 'stamp_id required' });
+    await setProfileSlot(userId, slotIndex, stamp_id);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Feed ──────────────────────────────────────────────────────────────
 
 router.get('/feed', async (req, res, next) => {
   try {

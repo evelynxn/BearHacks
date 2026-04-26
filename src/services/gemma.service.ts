@@ -125,34 +125,57 @@ export interface CommandClassification {
 
 export async function classifyCommand(transcript: string, context: string[] = []): Promise<CommandClassification> {
   const contextStr = context.length > 0
-    ? `\nRecent conversation context (for reference):\n${context.map((c, i) => `${i + 1}. "${c}"`).join('\n')}\n`
+    ? `\nRecent user messages for context:\n${context.map((c, i) => `${i + 1}. "${c}"`).join('\n')}\n`
     : '';
 
   const prompt =
-    `You are Stampy, a warm personal voice journaling assistant.\n` +
-    `The user just said: "${transcript}"\n` +
+    `You are Stampy, a voice journaling assistant. Your ONLY job is to classify user speech into one intent and output JSON. Do NOT write prose or commentary.\n\n` +
+    `User said: "${transcript}"\n` +
     contextStr +
-    `Classify their intent and write a short verbal reply. You can reference prior context if needed for understanding references like "that" or "delete it".\n` +
-    `Output ONLY a single raw JSON object. Start with { and end with }.\n` +
-    `Schema: {"intent": "journal_entry"|"read_journal"|"clear_all"|"delete_latest"|"delete_count"|"delete_match"|"ignore"|"unknown", "content": "see rules", "response": "short warm 1-sentence reply", "needs_confirmation": boolean}\n\n` +
-    `Intent rules:\n` +
-    `- journal_entry: user narrating an event or experience for their journal. content = cleaned text (strip Stampy). response = MUST be "Got it, I'll write that to your journal.". needs_confirmation = false\n` +
-    `- read_journal: user wants journal read. content = "". response = MUST be "One moment, let me pull up your journal.". needs_confirmation = false\n` +
-    `- clear_all: delete ALL today's entries. content = "". response = MUST be "Are you sure you want to clear all of today's entries? Say yes or no.". needs_confirmation = true\n` +
-    `- delete_latest: delete most recent entry. content = "". response = MUST be "I'll delete your last entry. Are you sure? Say yes or no.". needs_confirmation = true\n` +
-    `- delete_count: delete N recent entries. content = number as string. response = MUST be "I'll delete your last [N] entries. Are you sure? Say yes or no." (replace [N] with the number). needs_confirmation = true\n` +
-    `- delete_match: delete entries matching description. content = description. response = MUST be "I'll delete entries about [topic]. Are you sure? Say yes or no." (replace [topic] with short description). needs_confirmation = true\n` +
-    `- ignore: speech is clearly NOT directed at Stampy — overheard conversation, background chatter, TV audio, or anything completely unrelated to journaling. content = "". response = "". needs_confirmation = false\n` +
-    `- unknown: speech seems directed at Stampy but intent is unclear. content = "". response = MUST be "Hey! Just say Stampy followed by a journal entry, ask me to read your journal, or tell me to delete something.". needs_confirmation = false`;
+    `\nOutput ONLY a raw JSON object. No markdown, no explanation. Start with { end with }.\n` +
+    `Schema: {"intent": string, "content": string, "response": string, "needs_confirmation": boolean}\n\n` +
+    `RULES — pick the FIRST matching intent:\n\n` +
+    `1. read_journal — user wants to hear their journal ("read my journal", "what did I write today")\n` +
+    `   content: ""\n` +
+    `   response: "One moment, let me pull up your journal."\n` +
+    `   needs_confirmation: false\n\n` +
+    `2. clear_all — user wants to delete ALL entries ("clear my journal", "delete everything")\n` +
+    `   content: ""\n` +
+    `   response: "Are you sure you want to clear all of today's entries? Say yes or no."\n` +
+    `   needs_confirmation: true\n\n` +
+    `3. delete_latest — user wants to delete the last/most recent entry\n` +
+    `   content: ""\n` +
+    `   response: "I'll delete your last entry. Are you sure? Say yes or no."\n` +
+    `   needs_confirmation: true\n\n` +
+    `4. delete_count — user wants to delete N recent entries\n` +
+    `   content: the number as a string (e.g. "3")\n` +
+    `   response: "I'll delete your last N entries. Are you sure? Say yes or no."\n` +
+    `   needs_confirmation: true\n\n` +
+    `5. delete_match — user wants to delete entries about a topic\n` +
+    `   content: the topic/description to match\n` +
+    `   response: "I'll delete entries about [topic]. Are you sure? Say yes or no."\n` +
+    `   needs_confirmation: true\n\n` +
+    `6. journal_entry — user is narrating something for their journal. This is the DEFAULT if the user is describing an experience, event, feeling, or activity.\n` +
+    `   content: extract the journal-worthy text. Remove meta-phrases like "write this down", "put in my journal", "can you save". Keep ONLY the life event. If unclear, use the full transcript. NEVER set content to empty string.\n` +
+    `   response: "Got it, I'll write that to your journal."\n` +
+    `   needs_confirmation: false\n\n` +
+    `7. unknown — speech seems directed at Stampy but doesn't match any intent above\n` +
+    `   content: ""\n` +
+    `   response: "Just tell me about your day and I'll write it down, or ask me to read your journal."\n` +
+    `   needs_confirmation: false\n\n` +
+    `IMPORTANT: If the user is telling you about something they did or experienced, it is ALWAYS journal_entry. Default to journal_entry when in doubt.`;
   const raw = await callGemma([{ text: prompt }]);
   return parseStrictJson<CommandClassification>(raw);
 }
 
 export async function synthesizeNarrative(fragments: Array<Record<string, unknown>>): Promise<string> {
   const prompt =
-    `You are writing a personal journal entry in the first person. ` +
-    `Use ONLY the facts and events listed in the fragments below — do NOT add, invent, or assume anything that is not explicitly stated. ` +
-    `Write in a relevant to journal writing emotion, reflective tone, under 100 words. ` +
+    `You are Stampy, a friendly journaling assistant reading back the user's journal entries for the day. ` +
+    `Combine the fragments below into a short, natural first-person summary of what the user did today. ` +
+    `Use ONLY the facts and events listed — do NOT add, invent, or assume anything not explicitly stated. ` +
+    `Keep the tone casual, warm, and upbeat — like a friend recapping your day. ` +
+    `Do NOT be dramatic, poetic, melancholic, or philosophical. Just state what happened simply. ` +
+    `Keep it under 80 words. ` +
     `Output ONLY the journal text — no headings, no bullet points, no JSON, no commentary.\n\n` +
     `Fragments: ${JSON.stringify(fragments)}`;
   return callGemma([{ text: prompt }]);

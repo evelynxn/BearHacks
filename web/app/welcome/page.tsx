@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Stamp from "../../components/Stamp";
 
 export default function Welcome() {
@@ -40,7 +39,7 @@ export default function Welcome() {
         </div>
       </div>
 
-      {/* CTAs */}
+      {/* CTAs — go straight to Auth0 */}
       <div
         style={{
           width: "100%",
@@ -51,8 +50,8 @@ export default function Welcome() {
           marginBottom: 40
         }}
       >
-        <Link
-          href="/signup"
+        <a
+          href="/auth/login?returnTo=/feed&screen_hint=signup"
           style={{
             background: "var(--pink)",
             color: "var(--cream)",
@@ -60,20 +59,31 @@ export default function Welcome() {
             borderRadius: 999,
             fontSize: 17,
             fontWeight: 500,
-            boxShadow: "var(--shadow-card)"
+            boxShadow: "var(--shadow-card)",
+            textDecoration: "none",
+            transition: "transform 200ms ease, box-shadow 200ms ease",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.transform = "scale(1.03)";
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 6px 20px rgba(60,35,28,0.22)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.transform = "scale(1)";
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow = "var(--shadow-card)";
           }}
         >
           Sign Up
-        </Link>
-        <Link
-          href="/login"
+        </a>
+        <a
+          href="/auth/login?returnTo=/feed"
           style={{
             color: "var(--brown)",
-            fontSize: 15
+            fontSize: 15,
+            textDecoration: "none",
           }}
         >
           Or Login
-        </Link>
+        </a>
       </div>
     </main>
   );

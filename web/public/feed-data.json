@@ -1,0 +1,39 @@
+[
+  {
+    "id": "e-1777211091542",
+    "time": "9:44 AM",
+    "date": "Today, 9:44 AM",
+    "title": "wowowwowo i love to demo",
+    "body": "",
+    "color": "olive",
+    "stampImage": "/stamps/stamp-1777211091527.png",
+    "owner": "demo-user"
+  },
+  {
+    "id": "e1",
+    "time": "9:42 PM",
+    "date": "Today, 9:42 PM",
+    "title": "Cherry blossom walk",
+    "body": "Took a long walk through the arboretum after my last lecture. The cherry blossoms finally peaked — petals drifting across the path like confetti. Sat on the stone bench by the pond and just watched the light change for twenty minutes.",
+    "color": "pink",
+    "stampImage": "/stamps/sample-1.svg"
+  },
+  {
+    "id": "e2",
+    "time": "4:11 PM",
+    "date": "Today, 4:11 PM",
+    "title": "Print studio session",
+    "body": "Spent the afternoon at the printmaking lab working on my linocut series. The first two pulls were off-register, but the third came out perfectly. There’s something meditative about carving — the repetition clears my head.",
+    "color": "olive",
+    "stampImage": "/stamps/sample-2.svg"
+  },
+  {
+    "id": "e3",
+    "time": "11:02 AM",
+    "date": "Today, 11:02 AM",
+    "title": "Morning reset",
+    "body": "Brewed loose-leaf oolong and opened every window. Spent an hour reading without checking my phone. The house finch that nests in the maple was singing again — I’m starting to recognize its call.",
+    "color": "soft",
+    "stampImage": "/stamps/sample-3.svg"
+  }
+]

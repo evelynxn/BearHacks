@@ -1,6 +1,6 @@
-# Punchi Pal — Frontend TODO
+# Stampi — Frontend TODO
 
-Tracks remaining work on the `frontend/figma` branch. Grouped by category.
+Tracks remaining work. Grouped by category.
 
 ## Backend wiring
 - [ ] `app/page.tsx` — replace splash timeout with real auth check (session → `/feed`, else → `/welcome`)

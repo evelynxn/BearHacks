@@ -44,3 +44,18 @@ export interface RawEventRow {
   CONTENT: string;
   CREATED_AT: string;
 }
+
+export interface StampRow {
+  ID: string;
+  USER_ID: string;
+  IMAGE_URL: string;
+  LABEL: string;
+  CREATED_AT: string;
+}
+
+export interface LikeRow {
+  USER_ID: string;
+  TARGET_JOURNAL_DATE: string;
+  TARGET_USER_ID: string;
+  CREATED_AT: string;
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type Tab = {
   key: "mail" | "create" | "profile";
@@ -12,14 +13,11 @@ type Tab = {
 const TABS: Tab[] = [
   { key: "mail", label: "mail", href: "/feed", bg: "var(--pink)" },
   { key: "create", label: "create", href: "/create", bg: "var(--pink-soft)" },
-  { key: "profile", label: "profile", href: "/profile", bg: "var(--olive)" }
+  { key: "profile", label: "profile", href: "/profile", bg: "var(--olive)" },
 ];
 
-// Stack of vertical tabs anchored to the right edge. The active tab disappears
-// (its page is the foreground); inactive tabs peek out to be tapped.
 export default function SideTabs() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const activeKey: Tab["key"] = pathname.startsWith("/create")
     ? "create"
@@ -28,56 +26,51 @@ export default function SideTabs() {
       : "mail";
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 70,
-        right: 0,
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        zIndex: 5,
-        pointerEvents: "none"
-      }}
-    >
-      {TABS.map((tab) => {
-        if (tab.key === activeKey) return null;
+    <>
+      {TABS.map((tab, i) => {
+        const isActive = tab.key === activeKey;
+
         return (
-          <button
+          <Link
             key={tab.key}
-            onClick={() => router.push(tab.href)}
+            href={tab.href}
             aria-label={`Go to ${tab.label}`}
+            onClick={(e) => { if (isActive) e.preventDefault(); }}
             style={{
-              pointerEvents: "auto",
-              width: 32,
-              height: 110,
+              position: "fixed",
+              top: `calc(var(--tab-top-start) + ${i} * (var(--tab-height) - var(--tab-overlap)))`,
+              right: 0,
+              zIndex: isActive ? 55 : 52 - i,
+              width: isActive ? "var(--tab-width-active)" : "var(--tab-width)",
+              height: "var(--tab-height)",
               background: tab.bg,
               borderTopLeftRadius: 14,
               borderBottomLeftRadius: 14,
+              borderTopRightRadius: 0,
+              borderBottomRightRadius: 0,
+              border: "none",
               color: "var(--brown)",
               writingMode: "vertical-rl",
               textOrientation: "mixed",
               transform: "rotate(180deg)",
-              fontSize: 16,
-              letterSpacing: 1,
-              padding: "12px 0",
+              fontSize: "var(--tab-font)",
+              fontWeight: isActive ? 600 : 500,
+              letterSpacing: 1.5,
+              padding: 0,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "-2px 2px 6px rgba(60,35,28,0.08)",
-              transition: "transform var(--transition), width var(--transition)"
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.width = "38px";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.width = "32px";
+              cursor: isActive ? "default" : "pointer",
+              boxShadow: isActive
+                ? "none"
+                : "-3px 0 8px rgba(60,35,28,0.1)",
+              textDecoration: "none",
             }}
           >
             {tab.label}
-          </button>
+          </Link>
         );
       })}
-    </div>
+    </>
   );
 }

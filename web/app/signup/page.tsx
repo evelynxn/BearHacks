@@ -29,8 +29,8 @@ export default function Signup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO(backend): POST to /api/auth/signup. For now, mock-signup → /feed.
-    router.push("/feed");
+    // Redirect to Auth0 signup screen — returns to /auth/callback → /feed
+    window.location.href = "/auth/login?returnTo=/feed&screen_hint=signup";
   };
 
   return (
@@ -55,7 +55,7 @@ export default function Signup() {
             <input
               id="email"
               type="email"
-              placeholder="Value"
+              placeholder="Enter your password"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={fieldInput}
@@ -69,7 +69,7 @@ export default function Signup() {
             <input
               id="password"
               type="password"
-              placeholder="Value"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={fieldInput}
@@ -83,7 +83,7 @@ export default function Signup() {
             <input
               id="confirm"
               type="password"
-              placeholder="Value"
+              placeholder="Enter your password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               style={fieldInput}

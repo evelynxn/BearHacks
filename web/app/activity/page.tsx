@@ -7,55 +7,72 @@ import { mockActivity } from "../../lib/mock-data";
 export default function ActivityPage() {
   return (
     <main
+      className="page-with-tabs"
       style={{
-        position: "relative",
-        minHeight: "100vh",
-        background: "var(--pink)"
+        background: "var(--pink)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
       }}
     >
-      <Pills active="activity" />
+      <div style={{ width: "100%", maxWidth: 1200 }}>
+        <Pills active="activity" />
+      </div>
       <SideTabs />
 
       <div
         style={{
           margin: "12px 22px",
-          padding: 20,
+          padding: "clamp(18px, 3vw, 28px)",
           background: "var(--cream-light)",
           borderRadius: 14,
           display: "flex",
           flexDirection: "column",
-          gap: 14
+          gap: 16,
+          width: "100%",
+          maxWidth: 700,
         }}
       >
         {mockActivity.map((a, i) => (
           <div
             key={a.id}
-            className="fade-up"
+            className="float-up"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 12,
-              animationDelay: `${i * 50}ms`
+              gap: 14,
+              animationDelay: `${i * 60}ms`,
+              padding: "8px 4px",
+              borderRadius: 10,
+              transition: "background 200ms ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(201,137,155,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
             }}
           >
             <div
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
+                width: 42,
+                height: 42,
+                borderRadius: 21,
                 background: "var(--avatar-purple)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "var(--brown)"
+                color: "var(--brown)",
+                fontSize: 18,
+                flexShrink: 0,
               }}
             >
               ⌒
             </div>
-            <div style={{ flex: 1, fontSize: 14, color: "var(--brown)" }}>
+            <div style={{ flex: 1, fontSize: 15, color: "var(--brown)" }}>
               <strong style={{ fontWeight: 600 }}>{a.who}</strong> {a.action}
             </div>
-            <div style={{ fontSize: 12, opacity: 0.55 }}>{a.when}</div>
+            <div style={{ fontSize: 12, opacity: 0.55, flexShrink: 0 }}>{a.when}</div>
           </div>
         ))}
       </div>

@@ -28,9 +28,8 @@ export default function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO(backend): POST credentials to /api/auth/login. For now, mock-login
-    // and route to /feed.
-    router.push("/feed");
+    // Redirect to Auth0 universal login — returns to /auth/callback → /feed
+    window.location.href = "/auth/login?returnTo=/feed";
   };
 
   return (
@@ -55,7 +54,7 @@ export default function Login() {
             <input
               id="email"
               type="email"
-              placeholder="Value"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={fieldInput}
@@ -69,7 +68,7 @@ export default function Login() {
             <input
               id="password"
               type="password"
-              placeholder="Value"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={fieldInput}

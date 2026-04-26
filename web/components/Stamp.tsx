@@ -16,6 +16,7 @@ type Props = {
   color?: StampColor;
   size?: number;
   rotate?: number;
+  imageSrc?: string;
   children?: ReactNode;
   style?: CSSProperties;
   onClick?: () => void;
@@ -26,6 +27,7 @@ export default function Stamp({
   color = "dark",
   size = 80,
   rotate = 0,
+  imageSrc,
   children,
   style,
   onClick
@@ -33,6 +35,7 @@ export default function Stamp({
   const fill = colorMap[color];
   const width = size;
   const height = Math.round(size * 1.18);
+  const maskId = `stamp-mask-${color}-${size}-${imageSrc ? "img" : "solid"}`;
 
   return (
     <div
@@ -54,7 +57,7 @@ export default function Stamp({
         style={{ position: "absolute", inset: 0, display: "block" }}
       >
         <defs>
-          <mask id={`stamp-mask-${color}-${size}`}>
+          <mask id={maskId}>
             <rect width="100" height="118" fill="white" />
             {Array.from({ length: 11 }).map((_, i) => (
               <circle
@@ -94,15 +97,29 @@ export default function Stamp({
             ))}
           </mask>
         </defs>
-        <rect
-          x="3"
-          y="3"
-          width="94"
-          height="112"
-          fill={fill}
-          mask={`url(#stamp-mask-${color}-${size})`}
-          rx="2"
-        />
+        {imageSrc ? (
+          <g mask={`url(#${maskId})`}>
+            <rect x="3" y="3" width="94" height="112" fill={fill} rx="2" />
+            <image
+              href={imageSrc}
+              x="3"
+              y="3"
+              width="94"
+              height="112"
+              preserveAspectRatio="xMidYMid slice"
+            />
+          </g>
+        ) : (
+          <rect
+            x="3"
+            y="3"
+            width="94"
+            height="112"
+            fill={fill}
+            mask={`url(#${maskId})`}
+            rx="2"
+          />
+        )}
       </svg>
       {children && (
         <div

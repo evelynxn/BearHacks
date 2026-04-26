@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type PillKey = "friends" | "explore" | "activity";
 
@@ -10,22 +10,23 @@ const PILLS: { key: PillKey; label: string; href: string }[] = [
   { key: "activity", label: "Activity", href: "/activity" }
 ];
 
-// Top-row pill nav shown on the mail/feed pages.
 export default function Pills({ active }: { active?: PillKey }) {
-  const router = useRouter();
   return (
     <div
       style={{
         display: "flex",
         gap: 10,
         padding: "20px 24px",
-        flexWrap: "wrap"
+        flexWrap: "wrap",
+        justifyContent: "center",
+        position: "relative",
+        zIndex: 56,
       }}
     >
       {PILLS.map((p) => (
-        <button
+        <Link
           key={p.key}
-          onClick={() => router.push(p.href)}
+          href={p.href}
           style={{
             background:
               active === p.key ? "var(--brown)" : "var(--brown-light)",
@@ -34,11 +35,12 @@ export default function Pills({ active }: { active?: PillKey }) {
             borderRadius: 999,
             fontSize: 14,
             fontWeight: 500,
-            transition: "background var(--transition)"
+            transition: "background var(--transition)",
+            textDecoration: "none",
           }}
         >
           {p.label}
-        </button>
+        </Link>
       ))}
     </div>
   );

@@ -215,6 +215,16 @@ def record_vad(pa: pyaudio.PyAudio, device_index: int) -> bytes:
 # ---------------------------------------------------------------------------
 
 _mpg123_proc: Optional[subprocess.Popen] = None
+_pygame_inited = False
+
+
+def _ensure_pygame() -> None:
+    """Initialize pygame mixer once. Never touches volume."""
+    global _pygame_inited
+    if not _pygame_inited:
+        import pygame
+        pygame.mixer.init()
+        _pygame_inited = True
 
 
 def stop_playback() -> None:
@@ -244,8 +254,8 @@ def play_mp3_bytes(mp3_bytes: bytes, alsa_hw: str) -> None:
         tmp_path = tmp.name
     try:
         if sys.platform == "win32":
+            _ensure_pygame()
             import pygame
-            pygame.mixer.init()
             pygame.mixer.music.load(tmp_path)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy():

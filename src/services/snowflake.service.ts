@@ -1,5 +1,5 @@
 import snowflake from 'snowflake-sdk';
-import { DailyJournalRow, HistoricalSummary, MemoryRecord, RawEventRow } from '../types';
+import { DailyJournalRow, HistoricalSummary, LikeRow, MemoryRecord, RawEventRow, StampRow } from '../types';
 
 export class SnowflakeServiceError extends Error {
   constructor(message: string, public readonly statusCode = 502) {
@@ -233,4 +233,89 @@ export async function fetchHistoricalSummaries(userId: string, days: number): Pr
     ORDER BY JOURNAL_DATE DESC
   `;
   return execute<HistoricalSummary>(sql, [userId, safeDays]);
+}
+
+// ── Stamps ────────────────────────────────────────────────────────────
+
+export async function insertStamp(userId: string, imageUrl: string, label: string): Promise<void> {
+  await execute(
+    `INSERT INTO USER_STAMPS (USER_ID, IMAGE_URL, LABEL) VALUES (?, ?, ?)`,
+    [userId, imageUrl, label]
+  );
+}
+
+export async function fetchUserStamps(userId: string): Promise<StampRow[]> {
+  return execute<StampRow>(
+    `SELECT ID, USER_ID, IMAGE_URL, LABEL, CREATED_AT FROM USER_STAMPS WHERE USER_ID = ? ORDER BY CREATED_AT DESC`,
+    [userId]
+  );
+}
+
+export async function deleteStamp(userId: string, stampId: string): Promise<boolean> {
+  const rows = await execute<{ CNT: number }>(
+    `SELECT COUNT(*) AS CNT FROM USER_STAMPS WHERE USER_ID = ? AND ID = ?`,
+    [userId, stampId]
+  );
+  if ((rows[0]?.CNT ?? 0) === 0) return false;
+  await execute(`DELETE FROM USER_STAMPS WHERE USER_ID = ? AND ID = ?`, [userId, stampId]);
+  return true;
+}
+
+// ── Likes ─────────────────────────────────────────────────────────────
+
+export async function insertLike(userId: string, targetUserId: string, targetDate: string): Promise<void> {
+  const existing = await execute<{ CNT: number }>(
+    `SELECT COUNT(*) AS CNT FROM USER_LIKES WHERE USER_ID = ? AND TARGET_USER_ID = ? AND TARGET_JOURNAL_DATE = ?`,
+    [userId, targetUserId, targetDate]
+  );
+  if ((existing[0]?.CNT ?? 0) > 0) return; // already liked
+  await execute(
+    `INSERT INTO USER_LIKES (USER_ID, TARGET_USER_ID, TARGET_JOURNAL_DATE) VALUES (?, ?, ?)`,
+    [userId, targetUserId, targetDate]
+  );
+}
+
+export async function removeLike(userId: string, targetUserId: string, targetDate: string): Promise<void> {
+  await execute(
+    `DELETE FROM USER_LIKES WHERE USER_ID = ? AND TARGET_USER_ID = ? AND TARGET_JOURNAL_DATE = ?`,
+    [userId, targetUserId, targetDate]
+  );
+}
+
+export async function fetchUserLikes(userId: string): Promise<LikeRow[]> {
+  return execute<LikeRow>(
+    `SELECT USER_ID, TARGET_USER_ID, TARGET_JOURNAL_DATE, CREATED_AT FROM USER_LIKES WHERE USER_ID = ? ORDER BY CREATED_AT DESC`,
+    [userId]
+  );
+}
+
+// ── Profile stamp slots ───────────────────────────────────────────────
+
+export async function setProfileSlot(userId: string, slotIndex: number, stampId: string): Promise<void> {
+  const existing = await execute<{ CNT: number }>(
+    `SELECT COUNT(*) AS CNT FROM PROFILE_SLOTS WHERE USER_ID = ? AND SLOT_INDEX = ?`,
+    [userId, slotIndex]
+  );
+  if ((existing[0]?.CNT ?? 0) > 0) {
+    await execute(
+      `UPDATE PROFILE_SLOTS SET STAMP_ID = ? WHERE USER_ID = ? AND SLOT_INDEX = ?`,
+      [stampId, userId, slotIndex]
+    );
+  } else {
+    await execute(
+      `INSERT INTO PROFILE_SLOTS (USER_ID, SLOT_INDEX, STAMP_ID) VALUES (?, ?, ?)`,
+      [userId, slotIndex, stampId]
+    );
+  }
+}
+
+export async function fetchProfileSlots(userId: string): Promise<Array<{ SLOT_INDEX: number; STAMP_ID: string; IMAGE_URL: string }>> {
+  return execute<{ SLOT_INDEX: number; STAMP_ID: string; IMAGE_URL: string }>(
+    `SELECT ps.SLOT_INDEX, ps.STAMP_ID, us.IMAGE_URL
+     FROM PROFILE_SLOTS ps
+     JOIN USER_STAMPS us ON ps.STAMP_ID = us.ID
+     WHERE ps.USER_ID = ?
+     ORDER BY ps.SLOT_INDEX ASC`,
+    [userId]
+  );
 }
